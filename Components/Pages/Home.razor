@@ -1,8 +1,14 @@
 ﻿@page "/"
+@rendermode InteractiveServer
 @using Advanced_TODO_list.Models
 @using System.Text.Json
+@inject IJSRuntime JS
 
 <PageTitle>Advanced TODO Full</PageTitle>
+
+<div class="alert alert-info">
+    @GlobalMessage
+</div>
 
 <div class="card mb-4 shadow-sm">
     <div class="card-body bg-light">
@@ -21,7 +27,7 @@
         <div class="mt-3 p-2 border rounded bg-white">
             <h6>Імпорт / Експорт (JSON):</h6>
             <div class="d-flex gap-2">
-                <textarea @bind="jsonData" class="form-control form-control-sm" placeholder="Вставте JSON сюди для імпорту"></textarea>
+                <textarea id="jsonTextArea" @bind="jsonData" class="form-control form-control-sm" placeholder="Вставте JSON сюди для імпорту"></textarea>
                 <div class="d-flex flex-column gap-1">
                     <button class="btn btn-secondary btn-sm" @onclick="ExportData">Експорт</button>
                     <button class="btn btn-warning btn-sm" @onclick="ImportData">Імпорт</button>
@@ -68,6 +74,8 @@
 }
 
 @code {
+    [CascadingParameter]
+    public string? GlobalMessage { get; set; }
     private List<TodoList> allLists = new() { new TodoList { Name = "Основний список" } };
     private TodoList? currentList;
     private string newTaskTitle = "";
@@ -78,6 +86,19 @@
     private string jsonData = "";
 
     protected override void OnInitialized() => currentList = allLists.First();
+
+    private async Task ExportData()
+    {
+        var options = new JsonSerializerOptions
+            {
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Create(System.Text.Unicode.UnicodeRanges.All),
+                WriteIndented = true
+            };
+
+        string json = JsonSerializer.Serialize(allLists, options);
+
+        await JS.InvokeVoidAsync("setJsonValue", "jsonTextArea", json);
+    }
 
     private void AddTask()
     {
@@ -93,11 +114,6 @@
         var newList = new TodoList { Name = $"Список #{allLists.Count + 1}" };
         allLists.Add(newList);
         currentList = newList;
-    }
-
-    private void ExportData()
-    {
-        jsonData = JsonSerializer.Serialize(allLists);
     }
 
     private void ImportData()
